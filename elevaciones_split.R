@@ -33,5 +33,5 @@ st_write(elevaciones_NY_muestra,
          "elevaciones_NY_muestra.shp")
 
 # intentamos leerlo para ver si todo funcionó correctamente
-elevaciones_NY_ready <- st_read("elevaciones_NY_muestra.shp") %>%
+elevaciones_NY_final <- st_read("elevaciones_NY_muestra.shp") %>%
   st_as_sf()

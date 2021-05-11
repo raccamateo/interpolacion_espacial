@@ -29,3 +29,38 @@ Los datos originales están disponibles [acá](https://data.cityofnewyork.us/api
 
 
 Los límites administrativos de la ciudad están disponibles para descarga [acá](https://www1.nyc.gov/assets/planning/download/zip/data-maps/open-data/nybb_21a.zip)
+
+## Librerías
+
+
+Cargamos los paquetes que vamos a utilizar:
+
+
+```{r, echo=FALSE}
+library(tidyverse)
+library(sf)
+library(sp)
+library(rgdal)
+library(raster)
+library(gstat)
+library(osmdata)
+library(leaflet)
+library(tmap)
+```
+
+
+# Ahora sí: a los datos
+
+Vamos a explicar paso por paso cómo es el procedimiento desde la carga de datos pasando por el procesamiento, las visualizaciones, los métodos de interpolación en sí y los resultados.
+
+
+## Datos
+
+
+Como primer paso, cargamos el data set con el muestro de los puntos de elevación que vamos a usar para interpolar.
+
+
+```{r}
+elevaciones <- st_read("elevaciones_NY_muestra.shp") %>%
+  st_as_sf() 
+```

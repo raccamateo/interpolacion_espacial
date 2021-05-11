@@ -1,0 +1,31 @@
+---
+title: "Trabajo práctico: estadística espacial"
+author: "Mateo W. Racca"
+date: "`r format(Sys.time(), '%d/%m/%y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    theme: sandstone
+    fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Introducción
+
+
+Este trabajo forma parte del módulo Estadística Espacial en el posgrado en Big Data e Inteligencia Territorial de FLACSO Argentina a cargo de Priscilla Minotti.
+
+
+Se abordará un data set sobre puntos de elevación de la ciudad de Nueva York con distintos métodos de interpolación espacial. El objetivo es mostrar las diferencias, fortalezas y debilidades de cada uno.
+
+
+Los datos originales están disponibles [acá](https://data.cityofnewyork.us/api/geospatial/szwg-xci6?method=export&format=Shapefile) mientras que la muestra con la que trabajamos junto con el proyecto del trabajo [acá](https://github.com/raccamateo/interpolacion_espacial).
+
+
+Los límites administrativos de la ciudad están disponibles para descarga [acá](https://www1.nyc.gov/assets/planning/download/zip/data-maps/open-data/nybb_21a.zip)

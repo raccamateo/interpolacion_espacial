@@ -19,7 +19,7 @@ sample_size = floor(0.01*nrow(elevaciones_NY))
 # floor 0.01 significa que vamos a seleccionar el 1% del total de puntos, es decir 14.737
 
 #usamos set.seed para que en caso de querer replicar el muestreo esto sea posible
-set.seed(777)
+set.seed(999)
 picked = sample(seq_len(nrow(elevaciones_NY)),size = sample_size)
 
 # creamos el nuevo dataset

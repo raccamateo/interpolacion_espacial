@@ -64,3 +64,21 @@ Como primer paso, cargamos el data set con el muestro de los puntos de elevació
 elevaciones <- st_read("elevaciones_NY_muestra.shp") %>%
   st_as_sf() 
 ```
+
+
+Para graficar los puntos de elevación en el mapa vamos a usar **tmap**. Lo configuramos.
+
+
+```{r, message=FALSE}
+tmap_mode("view")
+```
+
+
+Y ahora, graficamos con el mapa base:
+
+
+```{r}
+qtm(elevaciones)
+```
+
+

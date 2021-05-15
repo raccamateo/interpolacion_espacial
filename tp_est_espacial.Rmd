@@ -82,3 +82,10 @@ qtm(elevaciones)
 ```
 
 
+Ahora vamos a ver específicamente cómo de distribuyen los puntos de elevación de nuestro data set y cual es su altura:
+
+
+```{r}
+ggplot() + geom_sf(data = elevaciones, aes(color = ELEVATION)) + scale_color_viridis_c(name = "[Altura]")+ theme_bw()
+```
+

@@ -89,3 +89,13 @@ Ahora vamos a ver específicamente cómo de distribuyen los puntos de elevación
 ggplot() + geom_sf(data = elevaciones, aes(color = ELEVATION)) + scale_color_viridis_c(name = "[Altura]")+ theme_bw()
 ```
 
+
+## Límites y Áreas de Interés
+
+
+En este apartado vamos a ver tres métodos para definir el área de trabajo o de interés (AOI) que nos resulta útil para definir el área de análisis espacial a partir de nuestros datos.
+
+
+### Bounding box (bbox)
+
+Bounding box (o simplemente bbox) es un área definida por dos latitudes y dos longitudes.En este caso, usamos bbox que nos sirve para setear los límites necesarios para después poder interpolar.

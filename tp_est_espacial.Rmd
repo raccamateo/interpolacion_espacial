@@ -28,9 +28,8 @@ Se abordará un data set sobre puntos de elevación de la ciudad de Nueva York c
 Los datos originales están disponibles [acá](https://data.cityofnewyork.us/api/geospatial/szwg-xci6?method=export&format=Shapefile) mientras que la muestra con la que trabajamos junto con el proyecto del trabajo [acá](https://github.com/raccamateo/interpolacion_espacial).
 
 
-Los límites administrativos de la ciudad están disponibles para descarga [acá](https://www1.nyc.gov/assets/planning/download/zip/data-maps/open-data/nybb_21a.zip)
 
-## Librerías
+## Paquetes
 
 
 Cargamos los paquetes que vamos a utilizar:
@@ -51,13 +50,14 @@ library(tmap)
 
 # Ahora sí: a los datos
 
-Vamos a explicar paso por paso cómo es el procedimiento desde la carga de datos pasando por el procesamiento, las visualizaciones, los métodos de interpolación en sí y los resultados.
+
+Vamos a explicar paso por paso cómo es el procedimiento desde la carga de datos al procesamiento, las visualizaciones, los métodos de interpolación en sí y los resultados.
 
 
 ## Datos
 
 
-Como primer paso, cargamos el data set con el muestro de los puntos de elevación que vamos a usar para interpolar.
+Cargamos el data set con la muestra de los puntos de elevación que vamos a usar para interpolar.
 
 
 ```{r}
@@ -66,7 +66,7 @@ elevaciones <- st_read("elevaciones_NY_muestra.shp") %>%
 ```
 
 
-Para graficar los puntos de elevación en el mapa vamos a usar **tmap**. Lo configuramos.
+Para graficar los puntos en el mapa vamos a usar **tmap**. Lo configuramos.
 
 
 ```{r, message=FALSE}
@@ -74,7 +74,7 @@ tmap_mode("view")
 ```
 
 
-Y ahora, graficamos con el mapa base:
+Y ahora, graficamos los puntos con el mapa base:
 
 
 ```{r}
@@ -98,4 +98,37 @@ En este apartado vamos a ver tres métodos para definir el área de trabajo o de
 
 ### Bounding box (bbox)
 
-Bounding box (o simplemente bbox) es un área definida por dos latitudes y dos longitudes.En este caso, usamos bbox que nos sirve para setear los límites necesarios para después poder interpolar.
+
+Bounding box (o simplemente bbox) es un área definida por dos latitudes y dos longitudes.En este caso, usamos bbox que nos sirve para setear los límites (en forma de caja).
+
+
+```{r}
+elevaciones_bbox <- st_as_sfc(st_bbox(elevaciones))
+```
+
+
+### Buffer
+
+
+Cuando usamos la función st_buffer(), ésta nos devuelve una geometría que representa todos los puntos cuya distancia es menor o igual a la distancia indicada. En este caso vamos a usar como distancia 10500 metros para crear un polígono usable para interpolar.
+
+
+```{r}
+elevaciones_buffer <- elevaciones %>% st_buffer(dist= 10500) %>% st_geometry() %>% st_union()
+elevaciones_buffer
+```
+
+
+### Polígono máximo convexo o convex hull
+
+
+Convex hull es el polígono convexo más pequeño que incluye a todos los puntos incluidos en un data set. Vamos a calcular el polígono máximo convexo de nuestros puntos de elevación:
+
+
+```{r}
+elevaciones_convex_hull <- elevaciones %>% st_union()%>% st_convex_hull()
+elevaciones_convex_hull
+```
+
+
+Ahora vamos a ver cada tipo de límite en el mapa:

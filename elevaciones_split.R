@@ -22,16 +22,26 @@ sample_size = floor(0.01*nrow(elevaciones_NY))
 set.seed(999)
 picked = sample(seq_len(nrow(elevaciones_NY)),size = sample_size)
 
-# creamos el nuevo dataset
+#creamos el nuevo dataset
 elevaciones_NY_muestra = elevaciones_NY[picked,]
 
-#transformamos los datos para poder almacenarlos como datos espaciales
+#para poder calcular semivariogramas eliminamos los valores de elevaciones negativos
+elevaciones_NY_muestra <- elevaciones_NY_muestra %>%
+  filter(ELEVATION > 0)
+
+#guardamos los datos como csv
+write.csv2(elevaciones_NY_muestra, file = "elevaciones_NY_muestra.csv")
+
+#guardamos los datos como geojson
+st_write(elevaciones_NY_muestra, "elevaciones_NY_muestra.geojson")
+
+#transformamos los datos para poder almacenarlos como shapefile
 elevaciones_NY_muestra <- st_zm(elevaciones_NY_muestra, drop=T, what='ZM')
 
-# guardamos el dataframe elevaciones_NY_muestra
+#guardamos el dataframe elevaciones_NY_muestra
 st_write(elevaciones_NY_muestra,
          "elevaciones_NY_muestra.shp")
 
-# intentamos leerlo para ver si todo funcionó correctamente
-elevaciones_NY_final <- st_read("elevaciones_NY_muestra.shp") %>%
+#intentamos leer el shapefile para ver si todo funcionó correctamente
+elevaciones_NY_ready <- st_read("elevaciones_NY_muestra.shp") %>%
   st_as_sf()

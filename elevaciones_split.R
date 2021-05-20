@@ -14,7 +14,7 @@ elevaciones_NY <- st_read("nyc_elevations_complete.shp") %>%
   st_as_sf()
 # el dataset original cuenta con 1.473.788 puntos
 
-# filtramos solo los puntos de elevación correspondientes a edificios
+# filtramos solo los puntos de elevación correspondientes a edificios identificadas con 3020
 elevaciones_NY_b <- elevaciones_NY %>%
   filter(FEAT_CODE == 3020)
 
@@ -24,15 +24,22 @@ sample_size = floor(0.01*nrow(elevaciones_NY_b))
 
 #usamos set.seed para que en caso de querer replicar el muestreo esto sea posible
 set.seed(777)
-picked = sample(seq_len(nrow(elevaciones_NY)),size = sample_size)
+picked = sample(seq_len(nrow(elevaciones_NY_b)),size = sample_size)
 
 #creamos el nuevo dataset
-elevaciones_NY_muestra = elevaciones_NY[picked,]
+elevaciones_NY_muestra = elevaciones_NY_b[picked,]
 
 #para poder calcular semivariogramas eliminamos los valores de elevaciones negativos
 elevaciones_NY_muestra <- elevaciones_NY_muestra %>%
-  filter(ELEVATION > 0) 
-  
+  filter(ELEVATION > 0) %>%
+  #transformamos la columna ELEVATION de pies a metros
+  mutate(ELEVATION = ELEVATION/3.2808) %>%
+  #renombramos ELEVATION por elevacion
+  rename(elevacion = ELEVATION) %>%
+  #dejamos fuera columnas innecesarias
+  dplyr::select(-SOURCE_ID, -SUB_CODE, -STATUS)
+
+ 
 #guardamos los datos como csv
 write.csv2(elevaciones_NY_muestra, file = "elevaciones_NY_muestra.csv")
 

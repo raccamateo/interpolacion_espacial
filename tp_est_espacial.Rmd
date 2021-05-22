@@ -1,5 +1,5 @@
 ---
-title: "Trabajo práctico: estadística espacial"
+title: "Estadística espacial"
 author: "Mateo W. Racca"
 date: "`r format(Sys.time(), '%d/%m/%y')`"
 output:
@@ -22,7 +22,7 @@ knitr::opts_chunk$set(echo = TRUE)
 Este trabajo forma parte del módulo Estadística Espacial en el posgrado en Big Data e Inteligencia Territorial de FLACSO Argentina a cargo de Priscilla Minotti.
 
 
-Se abordará un data set sobre puntos de elevación de la ciudad de Nueva York con distintos métodos de interpolación espacial. El objetivo es mostrar las diferencias, fortalezas y debilidades de cada uno.
+Se abordará un data set sobre puntos de elevación (originalmente medidos en pies pero convertidos a metros) de edificios en la ciudad de Nueva York con distintos métodos de interpolación espacial. 
 
 
 Los datos originales están disponibles [acá](https://data.cityofnewyork.us/api/geospatial/szwg-xci6?method=export&format=Shapefile) mientras que la muestra con la que trabajamos junto con el proyecto del trabajo [acá](https://github.com/raccamateo/interpolacion_espacial).
@@ -48,13 +48,10 @@ library(tmap)
 ```
 
 
-# Ahora sí: a los datos
+Ahora vamos a explicar paso por paso cómo es el procedimiento desde la carga de datos al procesamiento, las visualizaciones, los métodos de interpolación en sí y los resultados.
 
 
-Vamos a explicar paso por paso cómo es el procedimiento desde la carga de datos al procesamiento, las visualizaciones, los métodos de interpolación en sí y los resultados.
-
-
-## Datos
+## Carga de datos
 
 
 Cargamos el data set con la muestra de los puntos de elevación que vamos a usar para interpolar.
@@ -66,7 +63,20 @@ elevaciones <- st_read("elevaciones_NY_muestra.shp") %>%
 ```
 
 
-Para graficar los puntos en el mapa vamos a usar **tmap**. Lo configuramos.
+Para entender mejor los puntos de elevación vamos a usar *summary()*
+
+
+```{r}
+summary(elevaciones$elevacion)
+```
+
+
+Como vemos, el punto más de medición de altura de edificios mas bajo está elevado a 3.68 metros, en promedio la altura de los edificios es de 25.085 metros y la mediana es 22.315 metros. La altura máxima es de algo más de 430 metros.
+
+## Visualizaciones básicas
+
+
+Para entender mejor los datos vamos a graficar los puntos de elevación ubicados en el mapa. Para eso vamos a usar **tmap**. Lo configuramos.
 
 
 ```{r, message=FALSE}
@@ -86,20 +96,24 @@ Ahora vamos a ver específicamente cómo de distribuyen los puntos de elevación
 
 
 ```{r}
-ggplot() + geom_sf(data = elevaciones, aes(color = ELEVATION)) + scale_color_viridis_c(name = "[Altura]")+ theme_bw()
+ggplot() + 
+  geom_sf(data = elevaciones, aes(color = elevacion)) + 
+  scale_color_viridis_c(name = "Altura") + 
+  ggtitle("Puntos de elevación: edificios en la ciudad de Nueva York", subtitle = "Altura expresada en metros") +
+  theme_bw()
 ```
 
 
-## Límites y Áreas de Interés
+# Límites y Áreas de Interés
 
 
-En este apartado vamos a ver tres métodos para definir el área de trabajo o de interés (AOI) que nos resulta útil para definir el área de análisis espacial a partir de nuestros datos.
+En este apartado vamos a ver tres métodos para definir el área de trabajo o de interés (*AOI*) que nos resulta útil para definir el área de análisis espacial a partir de nuestros datos.
 
 
-### Bounding box (bbox)
+## Bounding box (*bbox*)
 
 
-Bounding box (o simplemente bbox) es un área definida por dos latitudes y dos longitudes.En este caso, usamos bbox que nos sirve para setear los límites (en forma de caja).
+Bounding box (o simplemente *bbox*) es un área definida por dos latitudes y dos longitudes.En este caso, usamos bbox que nos sirve para setear los límites (en forma de caja).
 
 
 ```{r}
@@ -107,19 +121,24 @@ elevaciones_bbox <- st_as_sfc(st_bbox(elevaciones))
 ```
 
 
-### Buffer
+## Buffer
 
 
-Cuando usamos la función st_buffer(), ésta nos devuelve una geometría que representa todos los puntos cuya distancia es menor o igual a la distancia indicada. En este caso vamos a usar como distancia 10500 metros para crear un polígono usable para interpolar.
+Cuando usamos la función *st_buffer()*, ésta nos devuelve una geometría que representa todos los puntos cuya distancia es menor o igual a la distancia indicada. En este caso vamos a usar como distancia 2000 metros para crear un polígono usable para interpolar.
 
 
 ```{r}
-elevaciones_buffer <- elevaciones %>% st_buffer(dist= 10500) %>% st_geometry() %>% st_union()
+elevaciones_buffer <- elevaciones %>% 
+  st_buffer(dist= 2000) %>% 
+  st_geometry() %>% 
+  st_simplify() %>% 
+  st_union()
+
 elevaciones_buffer
 ```
 
 
-### Polígono máximo convexo o convex hull
+## Polígono máximo convexo o convex hull
 
 
 Convex hull es el polígono convexo más pequeño que incluye a todos los puntos incluidos en un data set. Vamos a calcular el polígono máximo convexo de nuestros puntos de elevación:
@@ -131,4 +150,98 @@ elevaciones_convex_hull
 ```
 
 
-Ahora vamos a ver cada tipo de límite en el mapa:
+## Límites políticos y administrativos de la ciudad
+
+
+```{r}
+elevaciones_boundaries <- st_read("nybb.shp") %>%
+  st_geometry() %>% 
+  st_simplify() %>% 
+  st_union()
+```
+
+
+## Límites en el mapa
+
+
+Ahora vamos a ver cada tipo de límite en el mapa con los puntos de elevación:
+
+
+```{r}
+qtm(elevaciones) +
+  #en rojo los bordes de la bounding box
+  qtm(elevaciones_bbox, fill = NULL, borders="red") +
+  #en azul los bordes de buffer
+  qtm(elevaciones_buffer, fill = NULL, borders = "blue") +
+  #en verde los bordes del poligono convexo
+  qtm(elevaciones_convex_hull, fill = NULL, borders = "green") +
+  #en negro los bordes de los límites políticos y administrativos
+  qtm(elevaciones_boundaries, fill = NULL, borders = "black")
+```
+
+
+De ahora en adelante vamos a trabajar con los límites políticos y administrativos.
+
+
+# Interpolación espacial
+
+Vamos a desarrollar tres métodos de interpolación: Polígonos de Voronoi o Thiessen, Distancia Inversa Ponderada (de ahora en más *IDW*) y Kriging.
+
+
+## Polígonos de Voronoi o Thiessen
+
+
+Los puntos de elevación conocidos son utilizados como puntos generadores para dividir nuestra área de interés en tantos polígonos o teselas como puntos conocidos. El espacio interno de estos polígonos contiene todos los puntos cuya distancia al punto generador es menor que la distancia a cualquier otro punto externo. La división es a través de bisectores perpendiculares (líneas) que se forman al calcular las distancias entre puntos. 
+
+
+```{r}
+voronoi <- elevaciones %>% 
+          st_geometry() %>%
+          st_union() %>%
+          st_voronoi() %>%
+          st_collection_extract()%>%
+          st_sfc(crs = st_crs(elevaciones)) %>% 
+          st_sf() %>% 
+          st_join(elevaciones) %>%
+          st_intersection(elevaciones_boundaries)
+```
+
+
+```{r}
+qtm(voronoi, fill = "elevacion", fill.palette = "-viridis")
+```
+
+
+Como podemos ver, se generaron tantos polígonos como puntos tiene nuestro dataset. El polígono con el edificio más alto está ubicado en la isla de Manhattan.
+
+
+## Grilla de puntos y raster
+
+
+Para utilizar los dos métodos de interpolación restantes necesitamos una grilla de puntos. Vamos a usar el dataset de puntos de elevación como base y la grilla estará contenida en una bounding box. Para eso:
+
+
+```{r eval=FALSE, echo=FALSE}
+grilla_bbox <-  st_make_grid(elevaciones, cellsize = c(700, 700)) %>% 
+  st_sf(grid_id = 1:length(.))
+```
+
+
+Nuestra grilla tiene 47300 puntos. Ahora vamos usar la función *st_intersection()* para quedarnos solo con los valores que se encuentran dentro de los límites de la ciudad.
+
+
+```{r, eval=FALSE, echo=FALSE}
+elevaciones_grilla <- st_intersection(grilla_bbox, st_as_sf(elevaciones_boundaries)) %>%
+  st_sf()
+```
+
+
+Como la intersección entre la grilla de puntos y los límites de la ciudad toma tiempo
+```{r eval=FALSE, echo=FALSE}
+#transformamos los datos para poder almacenarlos como shapefile
+grilla_muestra <- st_zm(elevaciones_grilla, drop=T, what='ZM')
+
+#guardamos el dataframe elevaciones_NY_muestra
+st_write(grilla_muestra,
+         "elevaciones_grilla.shp")
+```

@@ -214,34 +214,3 @@ qtm(voronoi, fill = "elevacion", fill.palette = "-viridis")
 
 Como podemos ver, se generaron tantos polígonos como puntos tiene nuestro dataset. El polígono con el edificio más alto está ubicado en la isla de Manhattan.
 
-
-## Grilla de puntos y raster
-
-
-Para utilizar los dos métodos de interpolación restantes necesitamos una grilla de puntos. Vamos a usar el dataset de puntos de elevación como base y la grilla estará contenida en una bounding box. Para eso:
-
-
-```{r eval=FALSE, echo=FALSE}
-grilla_bbox <-  st_make_grid(elevaciones, cellsize = c(700, 700)) %>% 
-  st_sf(grid_id = 1:length(.))
-```
-
-
-Nuestra grilla tiene 47300 puntos. Ahora vamos usar la función *st_intersection()* para quedarnos solo con los valores que se encuentran dentro de los límites de la ciudad.
-
-
-```{r, eval=FALSE, echo=FALSE}
-elevaciones_grilla <- st_intersection(grilla_bbox, st_as_sf(elevaciones_boundaries)) %>%
-  st_sf()
-```
-
-
-Como la intersección entre la grilla de puntos y los límites de la ciudad toma tiempo
-```{r eval=FALSE, echo=FALSE}
-#transformamos los datos para poder almacenarlos como shapefile
-grilla_muestra <- st_zm(elevaciones_grilla, drop=T, what='ZM')
-
-#guardamos el dataframe elevaciones_NY_muestra
-st_write(grilla_muestra,
-         "elevaciones_grilla.shp")
-```

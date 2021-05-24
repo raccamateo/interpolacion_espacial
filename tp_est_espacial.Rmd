@@ -214,3 +214,51 @@ qtm(voronoi, fill = "elevacion", fill.palette = "-viridis")
 
 Como podemos ver, se generaron tantos polígonos como puntos tiene nuestro dataset. El polígono con el edificio más alto está ubicado en la isla de Manhattan.
 
+
+## Grilla de puntos y raster
+
+
+Para utilizar los dos métodos de interpolación restantes necesitamos una grilla de puntos. Vamos a usar el dataset de puntos de elevación como base y la grilla estará contenida en una bounding box. Para eso:
+
+
+```{r}
+grilla_bbox <-  st_make_grid(elevaciones, cellsize = c(700, 700), what = "centers") %>%
+  st_as_sf()
+```
+
+
+Nuestra grilla tiene 47300 puntos. Ahora vamos usar la función *st_intersection()* para quedarnos solo con los valores que se encuentran dentro de los límites de la ciudad.
+
+
+```{r}
+elevaciones_grilla <- grilla_bbox %>% st_intersection(elevaciones_boundaries)
+```
+
+
+La grilla resultante tiene 17160 puntos ubicados dentro de los límites de la ciudad. Vamos a usar este dataset para interpolar con IDW y Kriging.
+
+
+## IDW
+
+En la Distancia Inversa Ponderada cada punto tiene influencia local que disminuye con la distancia. El valor a predecir se calcula usando una combinación lineal ponderada de los vectores muestreados. A mayor proximidad al lugar a predecir, mayor peso de los puntos vecinos.
+
+
+La potencia de la distancia inversa por defecto es uno (1). Vamos a calcular con esta configuración básica:
+
+
+```{r}
+elevaciones_idw <- gstat::idw(elevacion ~ 1, elevaciones, elevaciones_grilla)
+```
+
+
+Algunas estadísticas sobre la altura de las predicciones:
+
+
+```{r}
+summary(elevaciones_idw$var1.pred)
+```
+
+
+Como se puede observar, el valor máximo de las predicciones de altura de los edificios es de 178.847 metros. La altura promedio de los edificios es de casi 26 metros.
+
+Graficamos con *ggplot*:

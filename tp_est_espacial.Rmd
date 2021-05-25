@@ -262,3 +262,39 @@ summary(elevaciones_idw$var1.pred)
 Como se puede observar, el valor máximo de las predicciones de altura de los edificios es de 178.847 metros. La altura promedio de los edificios es de casi 26 metros.
 
 Graficamos con *ggplot*:
+
+
+
+### Variograma muestreal
+
+
+Los puntos resultantes del cálculo de la semivarianza se grafican en relación con la distancia en los que conocemos como semivariograma muestral o experimental.
+
+
+```{r}
+#calculamos el variograma muestreal
+elevaciones_vgm <- variogram(log(elevacion)~1, elevaciones)
+
+#graficamos
+plot(elevaciones_vgm)
+```
+
+
+Como se puede ver, las distancias (en metros) son grandes y la semivarianza es baja, pero sigue la distribución esperada. El rango de aproximadamente 20.000 metros.
+
+
+### Variograma teórico o ajustado
+
+
+Los puntos del semivariograma muestral se ajustan según un modelo matemático (en este caso vamos a usar *Sph*) y el resultado es el semivariograma teórico o ajustado.
+
+
+```{r}
+elevaciones_vgm_ajustado <- fit.variogram(elevaciones_vgm, model=vgm("Sph"))
+elevaciones_vgm_ajustado
+
+plot(elevaciones_vgm, elevaciones_vgm_ajustado)
+```
+
+
+Como podemos ver: al ajustar, el *rango* se encuentra cerca de 24.000.

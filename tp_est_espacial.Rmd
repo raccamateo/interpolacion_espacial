@@ -264,6 +264,35 @@ Como se puede observar, el valor máximo de las predicciones de altura de los ed
 Graficamos con *ggplot*:
 
 
+```{r}
+ggplot() + 
+  geom_sf(data = elevaciones_idw, aes(color = var1.pred), size = 0.35) + 
+  ggtitle("IDW: puntos de elevación", subtitle = "Altura de edificios en la ciudad de Nueva York") +
+  scale_color_viridis_c(name = "altura (mts)", direction = -1, option = "magma") + 
+  theme_dark()
+```
+
+
+## Kriging
+
+Este método calcula la estructura de variación espacial a partir de muestras dispersas en el espacio. Genera una superficie estimada, es decir una variable regionalizada y una superficie de error.
+
+
+Kriging calcula la variación de una variable asumiendo que la media no tiene grandes variaciones, entonces necesita conocer la varianza de los datos. Para conocer esto se calcula la semivarianza que describe el patron de variabilidad espacial entre pares de puntos a distintos intervalos de distancia.
+
+
+### Semivariogramas
+
+
+Vamos a calcular el semivariograma muestreal y el teórico o ajustado. El objetivo del semivariograma es mostrar que a partir de cierto valor de distancia, el estimador de variación se nivela (no varía más o varía pero no en función de la distancia entre pares de puntos). 
+
+La distancia a la que el modelo se estabiliza se denomina *rango* o *range*. Los puntos muestrales separados por distancias más cortas que el rango están autocorrelacionadas espacialmente, mientras que los más alejados que el rango no lo están.
+
+
+El valor de variación máxima se llama *meseta* o *sill (C1)*.
+
+
+
 
 ### Variograma muestreal
 

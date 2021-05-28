@@ -1,5 +1,5 @@
 ---
-title: "Estadística espacial"
+title: "Interpolación espacial con R"
 author: "Mateo W. Racca"
 date: "`r format(Sys.time(), '%d/%m/%y')`"
 output:
@@ -25,8 +25,7 @@ Este trabajo forma parte del módulo Estadística Espacial en el posgrado en Big
 Se abordará un data set sobre puntos de elevación (originalmente medidos en pies pero convertidos a metros) de edificios en la ciudad de Nueva York con distintos métodos de interpolación espacial. 
 
 
-Los datos originales están disponibles [acá](https://data.cityofnewyork.us/api/geospatial/szwg-xci6?method=export&format=Shapefile) mientras que la muestra con la que trabajamos junto con el proyecto del trabajo [acá](https://github.com/raccamateo/interpolacion_espacial).
-
+Los datos originales están disponibles [acá](https://data.cityofnewyork.us/Transportation/Elevation-points/szwg-xci6) mientras que la muestra con la que trabajamos junto con el proyecto del trabajo [acá](https://github.com/raccamateo/interpolacion_espacial).
 
 
 ## Paquetes
@@ -36,15 +35,14 @@ Cargamos los paquetes que vamos a utilizar:
 
 
 ```{r, message=FALSE, warning=FALSE}
+library(gstat)
 library(tidyverse)
 library(sf)
 library(sp)
 library(rgdal)
 library(raster)
-library(gstat)
-library(osmdata)
-library(leaflet)
 library(tmap)
+library(leaflet)
 ```
 
 
@@ -88,7 +86,7 @@ Y ahora, graficamos los puntos con el mapa base:
 
 
 ```{r}
-qtm(elevaciones)
+qtm(elevaciones, scale = 0.5)
 ```
 
 
@@ -97,11 +95,14 @@ Ahora vamos a ver específicamente cómo de distribuyen los puntos de elevación
 
 ```{r}
 ggplot() + 
-  geom_sf(data = elevaciones, aes(color = elevacion)) + 
-  scale_color_viridis_c(name = "Altura") + 
-  ggtitle("Puntos de elevación: edificios en la ciudad de Nueva York", subtitle = "Altura expresada en metros") +
-  theme_bw()
+  geom_sf(data = elevaciones, aes(color = elevacion), size = 0.5) + 
+  ggtitle("Puntos de elevación: edificios en la ciudad de Nueva York") +
+  scale_color_viridis_c(name = "Altura (mts)", direction = -1, option = "magma") + 
+  theme_dark()
 ```
+
+
+Como podemos observar, en nuestro dataset hay unos pocos edificios con altura mayor a 300 metros. La mayoría los edificios tienen alturas menores de 150 metros.
 
 
 # Límites y Áreas de Interés
@@ -153,8 +154,11 @@ elevaciones_convex_hull
 ## Límites políticos y administrativos de la ciudad
 
 
+Cargamos un shapefile con los límiter políticos y administrativos de la ciudad (sin agua). Los límites están disponibles [acá](https://www1.nyc.gov/assets/planning/download/zip/data-maps/open-data/nybb_21b.zip).
+
+
 ```{r}
-elevaciones_boundaries <- st_read("nybb.shp") %>%
+elevaciones_limites <- st_read("nybb.shp") %>%
   st_geometry() %>% 
   st_simplify() %>% 
   st_union()
@@ -168,7 +172,7 @@ Ahora vamos a ver cada tipo de límite en el mapa con los puntos de elevación:
 
 
 ```{r}
-qtm(elevaciones) +
+qtm(elevaciones, scale = 0.5, title = "Límites de la ciudad en el mapa") + 
   #en rojo los bordes de la bounding box
   qtm(elevaciones_bbox, fill = NULL, borders="red") +
   #en azul los bordes de buffer
@@ -176,7 +180,7 @@ qtm(elevaciones) +
   #en verde los bordes del poligono convexo
   qtm(elevaciones_convex_hull, fill = NULL, borders = "green") +
   #en negro los bordes de los límites políticos y administrativos
-  qtm(elevaciones_boundaries, fill = NULL, borders = "black")
+  qtm(elevaciones_limites, fill = NULL, borders = "black")
 ```
 
 
@@ -194,7 +198,7 @@ Vamos a desarrollar tres métodos de interpolación: Polígonos de Voronoi o Thi
 Los puntos de elevación conocidos son utilizados como puntos generadores para dividir nuestra área de interés en tantos polígonos o teselas como puntos conocidos. El espacio interno de estos polígonos contiene todos los puntos cuya distancia al punto generador es menor que la distancia a cualquier otro punto externo. La división es a través de bisectores perpendiculares (líneas) que se forman al calcular las distancias entre puntos. 
 
 
-```{r}
+```{r, cache=TRUE}
 voronoi <- elevaciones %>% 
           st_geometry() %>%
           st_union() %>%
@@ -203,39 +207,58 @@ voronoi <- elevaciones %>%
           st_sfc(crs = st_crs(elevaciones)) %>% 
           st_sf() %>% 
           st_join(elevaciones) %>%
-          st_intersection(elevaciones_boundaries)
+          st_intersection(elevaciones_limites)
 ```
 
 
-```{r}
-qtm(voronoi, fill = "elevacion", fill.palette = "-viridis")
+Graficamos: 
+
+
+```{r, cache=TRUE}
+qtm(voronoi, fill = "elevacion", fill.palette = "-viridis", borders = "black", scale = 0.1,  title = "Polígonos de Voronoi: altura de edificios en Nueva York")
 ```
 
 
 Como podemos ver, se generaron tantos polígonos como puntos tiene nuestro dataset. El polígono con el edificio más alto está ubicado en la isla de Manhattan.
 
 
-## Grilla de puntos y raster
+## Grilla de puntos
 
 
 Para utilizar los dos métodos de interpolación restantes necesitamos una grilla de puntos. Vamos a usar el dataset de puntos de elevación como base y la grilla estará contenida en una bounding box. Para eso:
 
 
 ```{r}
-grilla_bbox <-  st_make_grid(elevaciones, cellsize = c(700, 700), what = "centers") %>%
-  st_as_sf()
+grilla_bbox <-  st_make_grid(elevaciones, cellsize = c(700, 700), what = "centers") 
 ```
 
 
 Nuestra grilla tiene 47300 puntos. Ahora vamos usar la función *st_intersection()* para quedarnos solo con los valores que se encuentran dentro de los límites de la ciudad.
 
 
-```{r}
-elevaciones_grilla <- grilla_bbox %>% st_intersection(elevaciones_boundaries)
+```{r, cache=TRUE}
+elevaciones_grilla <- st_intersection(elevaciones_limites, grilla_bbox)
 ```
 
 
-La grilla resultante tiene 17160 puntos ubicados dentro de los límites de la ciudad. Vamos a usar este dataset para interpolar con IDW y Kriging.
+Vamos a renombrar la columna **x** como *geometry*.
+
+```{r}
+elevaciones_grilla <- elevaciones_grilla %>%
+  st_as_sf() %>%
+  rename(geometry=x)
+```
+
+
+La grilla resultante tiene 17160 puntos ubicados dentro de los límites de la ciudad. Vamos a ver la grilla de puntos en el mapa:
+
+
+```{r}
+qtm(elevaciones_grilla, scale = 0.5)
+```
+
+
+A partir de ahora, usamos esta grilla de puntos para interpolar con IDW y Kriging.
 
 
 ## IDW
@@ -273,6 +296,9 @@ ggplot() +
 ```
 
 
+En este caso, el rango de valores es de 0 a 180 metros.
+
+
 ## Kriging
 
 Este método calcula la estructura de variación espacial a partir de muestras dispersas en el espacio. Genera una superficie estimada, es decir una variable regionalizada y una superficie de error.
@@ -293,7 +319,6 @@ El valor de variación máxima se llama *meseta* o *sill (C1)*.
 
 
 
-
 ### Variograma muestreal
 
 
@@ -302,10 +327,10 @@ Los puntos resultantes del cálculo de la semivarianza se grafican en relación 
 
 ```{r}
 #calculamos el variograma muestreal
-elevaciones_vgm <- variogram(log(elevacion)~1, elevaciones)
+lnz_vgm <- variogram(log(elevacion)~1, elevaciones)
 
 #graficamos
-plot(elevaciones_vgm)
+plot(lnz_vgm, main ="Variograma muestreal")
 ```
 
 
@@ -319,11 +344,74 @@ Los puntos del semivariograma muestral se ajustan según un modelo matemático (
 
 
 ```{r}
-elevaciones_vgm_ajustado <- fit.variogram(elevaciones_vgm, model=vgm("Sph"))
-elevaciones_vgm_ajustado
-
-plot(elevaciones_vgm, elevaciones_vgm_ajustado)
+lnz_fit_sph <- fit.variogram(lnz_vgm, model=vgm("Sph"))
+lnz_fit_sph
 ```
 
 
-Como podemos ver: al ajustar, el *rango* se encuentra cerca de 24.000.
+Como podemos ver: al ajustar, el *rango* se encuentra en 26640.97
+
+
+```{r}
+plot(lnz_vgm, lnz_fit_sph, 
+     main ="Variograma teórico o ajustado",
+     sub = "Método: Sph")
+```
+
+
+### Kriging ordinario
+
+
+El kriging usa los valores muestreales como el *log(elevacion)* de nuestro dataset original para interpolar cada punto de la grilla *elevaciones_grilla*. Usa el modelo ajustado, que en este caso es el esférico ya que recién usamos *sph*.
+
+
+```{r, cache=TRUE}
+lnz_pred <- gstat::krige(log(elevacion)~1, elevaciones, elevaciones_grilla, lnz_fit_sph)
+```
+
+
+Ahora vamos a graficar:
+
+
+```{r}
+ggplot() + 
+  geom_sf(data = lnz_pred, aes(color = exp(var1.pred)), size = 0.35) +
+  ggtitle("Kriging: puntos de elevación", subtitle = "Altura de edificios en la ciudad de Nueva York") +
+  scale_color_viridis_c(name = "altura (mts)", direction = -1, option = "magma") + 
+  theme_dark()
+```
+
+
+A diferencia de IDW, en el mapa (y en la escala) podemos ver que el resultado de Kriging es algo mas "suavizado". El rango de valores se encuentra entre 0 y 120 metros.
+
+
+Además, podemos calcular el error:
+
+```{r}
+ggplot() + 
+  geom_sf(data = lnz_pred, aes(color = var1.var), size = 0.35) + 
+  ggtitle("Varianza de Kriging en interpolación de puntos de elevación", subtitle = "Altura de edificios en la ciudad de Nueva York") +
+  scale_color_viridis_c(name = "varianza", direction = -1, option = "magma") + 
+  theme_dark()
+```
+
+
+Como podemos ver, la varianza es mayor en las zonas en las que contamos con menos puntos en el dataset original y es menor cuando contamos con más. 
+
+
+# Conclusiones
+
+
+Al trabajar con dos interpoladores exactos (Voronoi e IDW) es interesante poder medir el error de nuestra interpolación y en eso Kriging lleva ventaja.
+
+
+La desventaja de los Polígonos de Voronoi es que no hay estimación de error y que lo que queda contenido por un polígono toma de manera arbitraria el valor del punto central. Tampoco se ponderan los vecinos. 
+
+
+Hay que destacar que el método de Voronoi es el que mayor fidelidad tiene respecto a los datos originales, ya que los polígonos toman valores de nuestro dataset. La desventaja en este sentido es que debemos tener cuidado con valores los extremos y los outliers.
+
+
+Kriging nos permitió además de interpolar, conocer la varianza. La desventaja en este caso particular fue que la superficie generada es excesivamente suave. Además, al contar con diferencias entre alturas que producen quiebres, se perdió fidelidad de la distribución espacial del proceso.
+
+
+La Distancia Inversa Ponderada tiene como ventaja que funciona bien cuando el conjunto de puntos muestrales es denso ya que captura la extensión de la variación de la superficie. Si bien no hay estimación de error es la que mejor funcionó en este caso.
